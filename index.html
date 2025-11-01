@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pirates of the Multiplications 🏴‍☠️</title>
+    <style>
+        * {
+            margin: 0px;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: #fff;
+        }
+        
+        #game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            max-width: 95vw;
+            max-height: 95vh;
+        }
+        
+        h1 {
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: clamp(24px, 5vw, 48px);
+        }
+        
+        #game {
+            border: 4px solid #f4a460;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(244, 164, 96, 0.5);
+            max-width: 90vw;
+            max-height: 90vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        #info {
+            text-align: center;
+            font-size: 14px;
+            color: #ddd;
+        }
+        
+        canvas {
+            display: block;
+        }
+
+        #error-message {
+            display: none;
+            background: #ff0000;
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+            max-width: 600px;
+            text-align: center;
+        }
+
+        #error-message.show {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <!--div id="game-container">
+        <h1>⚓ Pirates of the Multiplications ⚓</h1>
+        <div id="game"></div>
+        <div id="info">Learn multiplications while sailing the seas!</div>
+        <div id="error-message"></div>
+    </div -->
+    
+    <!-- Phaser 3 - Updated CDN URL -->
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.55.2/dist/phaser.min.js"></script>
+    
+    <!-- Game Utils -->
+    <script src="src/utils/gameData.js"></script>
+    <script src="src/utils/saveSystem.js"></script>
+    <script src="src/utils/difficultyManager.js"></script>
+    <script src="src/utils/imageAssets.js"></script>
+    <script src="debug.js"></script>
+
+    <!-- Scenes -->
+    <script src="src/scenes/MenuScene.js"></script>
+    <script src="src/scenes/DifficultySelectScene.js"></script>
+    <script src="src/scenes/SailingScene.js"></script>
+    <script src="src/scenes/ChallengeScene.js"></script>
+    <script src="src/scenes/IslandScene.js"></script>
+    <script src="src/scenes/ShopScene.js"></script>
+    
+    <!-- Main Game Config -->
+    <script src="src/game.js"></script>
+
+    <!-- Error Handler -->
+    <script>
+        window.addEventListener('error', function(event) {
+            console.error('Global error:', event.error);
+            document.getElementById('error-message').textContent = 
+                'Error: ' + (event.error?.message || event.message || 'Unknown error');
+            document.getElementById('error-message').classList.add('show');
+        });
+
+        // Check if Phaser loaded
+        window.addEventListener('load', function() {
+            if (typeof Phaser === 'undefined') {
+                console.error('Phaser failed to load from CDN');
+                document.getElementById('error-message').textContent = 
+                    'ERROR: Phaser 3 library failed to load. Check your internet connection.';
+                document.getElementById('error-message').classList.add('show');
+            } else {
+                console.log('✅ Phaser 3 loaded successfully');
+            }
+        });
+
+        // Log script loading progress
+        console.log('🎮 Pirates of the Multiplications starting...');
+    </script>
+</body>
+</html>
