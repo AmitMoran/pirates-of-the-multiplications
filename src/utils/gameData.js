@@ -26,6 +26,11 @@ const GameData = {
         { id: 3, name: 'Storm Breaker', unlocked: false, cost: 150 },
     ],
     
+    cosmetics: {
+        purchased: [], // Array of cosmetic IDs that have been purchased
+        equipped: {}, // Currently equipped cosmetics by category
+    },
+    
     difficulty: 'medium', // easy, medium, hard
     
     statistics: {

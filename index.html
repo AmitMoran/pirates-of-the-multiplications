@@ -107,18 +107,24 @@
     <script>
         window.addEventListener('error', function(event) {
             console.error('Global error:', event.error);
-            document.getElementById('error-message').textContent = 
-                'Error: ' + (event.error?.message || event.message || 'Unknown error');
-            document.getElementById('error-message').classList.add('show');
+            const errorMsg = document.getElementById('error-message');
+            if (errorMsg) {
+                errorMsg.textContent = 
+                    'Error: ' + (event.error?.message || event.message || 'Unknown error');
+                errorMsg.classList.add('show');
+            }
         });
 
         // Check if Phaser loaded
         window.addEventListener('load', function() {
             if (typeof Phaser === 'undefined') {
                 console.error('Phaser failed to load from CDN');
-                document.getElementById('error-message').textContent = 
-                    'ERROR: Phaser 3 library failed to load. Check your internet connection.';
-                document.getElementById('error-message').classList.add('show');
+                const errorMsg = document.getElementById('error-message');
+                if (errorMsg) {
+                    errorMsg.textContent = 
+                        'ERROR: Phaser 3 library failed to load. Check your internet connection.';
+                    errorMsg.classList.add('show');
+                }
             } else {
                 console.log('✅ Phaser 3 loaded successfully');
             }

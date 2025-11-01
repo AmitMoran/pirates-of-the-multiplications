@@ -142,6 +142,8 @@ class DifficultySelectScene extends Phaser.Scene {
                 glow.setAlpha(0);
             })
             .on('pointerdown', () => {
+                // Reset the game before setting new difficulty
+                //SaveSystem.resetGame();
                 GameData.difficulty = difficultyKey;
                 this.scene.start('SailingScene');
             });

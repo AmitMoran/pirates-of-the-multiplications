@@ -75,7 +75,7 @@ class IslandScene extends Phaser.Scene {
         }).setOrigin(0.5).setDepth(20);
         
         // Calculate treasure rewards
-        const baseCoins = 100 * (this.enemiesDefeated || 1);
+        const baseCoins = 10 * (this.enemiesDefeated || 1);
         const difficultyMultiplier = { easy: 1, medium: 1.5, hard: 2 }[this.difficulty] || 1;
         const treasureCoins = Math.round(baseCoins * difficultyMultiplier);
         

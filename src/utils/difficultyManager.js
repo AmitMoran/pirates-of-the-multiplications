@@ -7,9 +7,9 @@ const DifficultyManager = {
     difficulties: {
         easy: {
             name: 'Easy',
-            range: [0, 4],
+            range: [0, 5],
             questionCount: 3,
-            timePerQuestion: 10,
+            timePerQuestion: 8,
             baseReward: 10,
             description: '0x0 to 4x12, 10s per question'
         },
@@ -23,7 +23,7 @@ const DifficultyManager = {
         }, 
         hard: {
             name: 'Hard',
-            range: [0, 12],
+            range: [4, 12],
             questionCount: 3,
             timePerQuestion: 3,
             baseReward: 50,
