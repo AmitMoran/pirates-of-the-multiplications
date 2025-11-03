@@ -46,7 +46,7 @@ class MenuScene extends Phaser.Scene {
         // Main buttons
         const buttonWidth = 300;
         const buttonHeight = 60;
-        const buttonY = [380, 480, 580];
+        const buttonY = [380, 480, 580, 680];
         
         // New Game Button
         this.createButton(400, buttonY[0], buttonWidth, buttonHeight, 'NEW GAME', () => {
@@ -63,11 +63,21 @@ class MenuScene extends Phaser.Scene {
             this.createButton(400, buttonY[2], buttonWidth, buttonHeight, 'SHOP', () => {
                 this.scene.start('ShopScene');
             }, '#FF6600');
+            
+            // Settings Button
+            this.createButton(400, buttonY[3], buttonWidth, buttonHeight, 'SETTINGS', () => {
+                this.scene.start('SettingsScene');
+            }, '#9966CC');
         } else {
             // Shop Button (shifted up if no continue)
             this.createButton(400, buttonY[1], buttonWidth, buttonHeight, 'SHOP', () => {
                 this.scene.start('ShopScene');
             }, '#FF6600');
+            
+            // Settings Button
+            this.createButton(400, buttonY[2], buttonWidth, buttonHeight, 'SETTINGS', () => {
+                this.scene.start('SettingsScene');
+            }, '#9966CC');
         }
         
         // Statistics display

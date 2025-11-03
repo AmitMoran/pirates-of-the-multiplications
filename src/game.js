@@ -29,6 +29,7 @@ const config = {
         ChallengeScene,
         IslandScene,
         ShopScene,
+        SettingsScene,
     ],
     render: {
         pixelArt: false,

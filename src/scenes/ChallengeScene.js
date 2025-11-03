@@ -12,6 +12,9 @@ class ChallengeScene extends Phaser.Scene {
         this.enemyName = data.enemy; // Now it's just a string
         this.difficulty = data.difficulty;
         
+        // Get answer input mode from settings (default to 'buttons' if not set)
+        this.answerInputMode = GameData.settings?.answerInputMode || 'buttons';
+        
         // Reset all timers and tweens to ensure clean state
         this.time.removeAllEvents();
         this.tweens.killAll();
@@ -148,6 +151,13 @@ class ChallengeScene extends Phaser.Scene {
         // Reset button references
         this.answerButtons = {};
         
+        // Reset input value for typing mode
+        if (this.answerInputMode === 'typing') {
+            this.currentInputValue = '';
+            // Remove keyboard listener
+            this.input.keyboard.off('keydown', this.handleTypingInput, this);
+        }
+        
         // AGGRESSIVE CLEANUP - Remove ALL question-related elements
         const childrenToRemove = [];
         
@@ -160,7 +170,9 @@ class ChallengeScene extends Phaser.Scene {
                     child.name.includes('answer') || 
                     child.name.includes('feedback') ||
                     child.name.includes('flash') ||
-                    child.name.includes('correct_answer')) {
+                    child.name.includes('correct_answer') ||
+                    child.name.includes('answer_input') ||
+                    child.name.includes('submit_button')) {
                     childrenToRemove.push(child);
                     return;
                 }
@@ -228,29 +240,41 @@ class ChallengeScene extends Phaser.Scene {
         // Update progress text
         this.progressText.setText(`Question ${this.currentQuestionIndex + 1}/${this.questions.length}`);
         
-        // Answer options
-        const answers = DifficultyManager.generateWrongAnswers(question.answer);
-        const buttonWidth = 150;
-        const buttonHeight = 80;
-        const startX = 150;
-        const startY = 500;
-        
-        // Store button references for easy access
-        this.answerButtons = {};
-        
-        answers.forEach((answer, index) => {
-            const x = startX + (index * (buttonWidth + 50));
-            const y = startY;
-            
-            // Create answer button and store reference
-            const buttonData = this.createAnswerButton(x, y, buttonWidth, buttonHeight, answer, answer === question.answer);
-            this.answerButtons[answer] = buttonData;
-        });
-        
         this.currentQuestion = question;
+        
+        // Create input UI based on settings
+        if (this.answerInputMode === 'typing') {
+            this.createTypingInput();
+        } else {
+            // Answer options (buttons mode)
+            const answers = DifficultyManager.generateWrongAnswers(question.answer);
+            const buttonWidth = 150;
+            const buttonHeight = 80;
+            const startX = 150;
+            const startY = 500;
+            
+            // Store button references for easy access
+            this.answerButtons = {};
+            
+            answers.forEach((answer, index) => {
+                const x = startX + (index * (buttonWidth + 50));
+                const y = startY;
+                
+                // Create answer button and store reference
+                const buttonData = this.createAnswerButton(x, y, buttonWidth, buttonHeight, answer, answer === question.answer);
+                this.answerButtons[answer] = buttonData;
+            });
+        }
         
         // Enable input for this question
         this.input.enabled = true;
+        
+        // Re-enable keyboard input for typing mode - always remove first to prevent duplicates
+        if (this.answerInputMode === 'typing' && this.input.keyboard) {
+            this.input.keyboard.off('keydown', this.handleTypingInput, this);
+            this.input.keyboard.on('keydown', this.handleTypingInput, this);
+            this.updateInputDisplay();
+        }
         
         // Reset timer for this question
         this.questionStartTime = this.time.now;
@@ -283,6 +307,128 @@ class ChallengeScene extends Phaser.Scene {
             },
             loop: true
         });
+    }
+    
+    createTypingInput() {
+        const inputY = 500;
+        const inputWidth = 300;
+        const inputHeight = 80;
+        
+        // Input field background
+        const inputBg = this.add.rectangle(400, inputY, inputWidth, inputHeight, 0x2a6ea0, 0.8);
+        inputBg.setStrokeStyle(3, 0xFFFFFF);
+        inputBg.setName('answer_input_bg');
+        
+        // Input field text display
+        this.answerInputText = this.add.text(400, inputY, '', {
+            font: 'bold 48px Arial',
+            fill: '#ffffff',
+            align: 'center',
+        }).setOrigin(0.5).setName('answer_input_text');
+        
+        // Prompt text
+        this.add.text(400, inputY - 60, 'Type your answer:', {
+            font: 'bold 24px Arial',
+            fill: '#FFD700',
+            align: 'center',
+        }).setOrigin(0.5).setName('answer_input_prompt');
+        
+        // Submit button
+        const submitButtonBg = this.add.rectangle(400, inputY + 100, 200, 60, 0x00AA00, 0.8);
+        submitButtonBg.setStrokeStyle(2, 0xFFFFFF);
+        submitButtonBg.setInteractive().setName('submit_button');
+        submitButtonBg.on('pointerover', () => {
+            submitButtonBg.setScale(1.05);
+            submitButtonBg.setTint(0x00ff00);
+        });
+        submitButtonBg.on('pointerout', () => {
+            submitButtonBg.setScale(1);
+            submitButtonBg.clearTint();
+        });
+        submitButtonBg.on('pointerdown', () => {
+            this.submitTypedAnswer();
+        });
+        
+        const submitText = this.add.text(400, inputY + 100, 'SUBMIT', {
+            font: 'bold 24px Arial',
+            fill: '#ffffff',
+            align: 'center',
+        }).setOrigin(0.5).setName('submit_button_text');
+        
+        // Store current input value
+        this.currentInputValue = '';
+        
+        // Enable keyboard input - always remove first to prevent duplicates
+        this.input.keyboard.off('keydown', this.handleTypingInput, this);
+        this.input.keyboard.on('keydown', this.handleTypingInput, this);
+        
+        // Focus on input field
+        this.input.keyboard.clearCaptures();
+    }
+    
+    handleTypingInput(event) {
+        // Ignore input if answering is disabled
+        if (!this.input.enabled) return;
+        
+        // Prevent default to avoid duplicate handling
+        event.preventDefault();
+        event.stopPropagation();
+        
+        // Handle backspace
+        if (event.key === 'Backspace') {
+            this.currentInputValue = this.currentInputValue.slice(0, -1);
+            this.updateInputDisplay();
+            return;
+        }
+        
+        // Handle Enter key to submit
+        if (event.key === 'Enter') {
+            this.submitTypedAnswer();
+            return;
+        }
+        
+        // Handle numeric input (0-9)
+        // Check both regular number keys and numpad
+        let numberPressed = null;
+        
+        if (event.key >= '0' && event.key <= '9') {
+            numberPressed = event.key;
+        } else if (event.keyCode >= 96 && event.keyCode <= 105) {
+            // Number pad
+            numberPressed = (event.keyCode - 96).toString();
+        }
+        
+        if (numberPressed !== null) {
+            // Limit input length to prevent overflow
+            if (this.currentInputValue.length < 6) {
+                this.currentInputValue += numberPressed;
+                this.updateInputDisplay();
+            }
+            return;
+        }
+    }
+    
+    updateInputDisplay() {
+        if (this.answerInputText) {
+            this.answerInputText.setText(this.currentInputValue || '');
+        }
+    }
+    
+    submitTypedAnswer() {
+        if (!this.input.enabled) return;
+        
+        // If no input, treat as wrong answer (or could skip submission)
+        if (!this.currentInputValue || this.currentInputValue.trim() === '') {
+            return;
+        }
+        
+        const typedAnswer = parseInt(this.currentInputValue);
+        const isCorrect = typedAnswer === this.currentQuestion.answer;
+        
+        // Disable keyboard input
+        this.input.keyboard.off('keydown', this.handleTypingInput, this);
+        
+        this.answerQuestion(isCorrect, false);
     }
     
     createAnswerButton(x, y, width, height, answer, isCorrect) {
@@ -339,6 +485,11 @@ class ChallengeScene extends Phaser.Scene {
         }
         this.input.enabled = false;
         
+        // Disable keyboard input if typing mode
+        if (this.answerInputMode === 'typing') {
+            this.input.keyboard.off('keydown', this.handleTypingInput, this);
+        }
+        
         let feedbackMessage = '';
         let feedbackColor = 0x00ff00;
         
@@ -389,12 +540,23 @@ class ChallengeScene extends Phaser.Scene {
                 // Next question - display it with fresh timer
                 this.displayQuestion();
                 this.input.enabled = true;
+                
+                // Re-enable keyboard input for typing mode - always remove first to prevent duplicates
+                if (this.answerInputMode === 'typing' && this.input.keyboard) {
+                    this.input.keyboard.off('keydown', this.handleTypingInput, this);
+                    this.input.keyboard.on('keydown', this.handleTypingInput, this);
+                }
             }
         });
     }
     
     highlightCorrectAnswer() {
         const correctAnswer = this.currentQuestion.answer;
+        
+        // For typing mode, just show the correct answer (already handled in showCorrectAnswer)
+        if (this.answerInputMode === 'typing') {
+            return;
+        }
         
         // Use stored button references if available
         if (this.answerButtons && this.answerButtons[correctAnswer]) {

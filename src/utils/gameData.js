@@ -33,6 +33,10 @@ const GameData = {
     
     difficulty: 'medium', // easy, medium, hard
     
+    settings: {
+        answerInputMode: 'buttons', // 'buttons' or 'typing'
+    },
+    
     statistics: {
         gamesPlayed: 0,
         correctAnswers: 0,
