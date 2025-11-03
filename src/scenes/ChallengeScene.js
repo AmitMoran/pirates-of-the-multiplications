@@ -145,6 +145,9 @@ class ChallengeScene extends Phaser.Scene {
     }
     
     displayQuestion() {
+        // Reset button references
+        this.answerButtons = {};
+        
         // AGGRESSIVE CLEANUP - Remove ALL question-related elements
         const childrenToRemove = [];
         
@@ -156,7 +159,8 @@ class ChallengeScene extends Phaser.Scene {
                 if (child.name.includes('question') || 
                     child.name.includes('answer') || 
                     child.name.includes('feedback') ||
-                    child.name.includes('flash')) {
+                    child.name.includes('flash') ||
+                    child.name.includes('correct_answer')) {
                     childrenToRemove.push(child);
                     return;
                 }
@@ -231,12 +235,16 @@ class ChallengeScene extends Phaser.Scene {
         const startX = 150;
         const startY = 500;
         
+        // Store button references for easy access
+        this.answerButtons = {};
+        
         answers.forEach((answer, index) => {
             const x = startX + (index * (buttonWidth + 50));
             const y = startY;
             
-            // Create answer button
-            this.createAnswerButton(x, y, buttonWidth, buttonHeight, answer, answer === question.answer);
+            // Create answer button and store reference
+            const buttonData = this.createAnswerButton(x, y, buttonWidth, buttonHeight, answer, answer === question.answer);
+            this.answerButtons[answer] = buttonData;
         });
         
         this.currentQuestion = question;
@@ -250,17 +258,22 @@ class ChallengeScene extends Phaser.Scene {
         // Remove old timer event if it exists
         if (this.timerEvent) {
             this.timerEvent.remove();
+            this.timerEvent = null;
         }
+        
+        // Remove old display update timer if exists
+        if (this.displayTimerEvent) {
+            this.displayTimerEvent.remove();
+            this.displayTimerEvent = null;
+        }
+        
+        // Update timer display immediately to show correct initial time
+        this.updateTimerDisplay();
         
         // Set new timer event for this specific question
         this.timerEvent = this.time.delayedCall(this.questionTimeout, () => {
             this.answerQuestion(false, true); // Time up = wrong answer, timedOut flag
         });
-        
-        // Remove old display update timer if exists
-        if (this.displayTimerEvent) {
-            this.displayTimerEvent.remove();
-        }
         
         // Create a repeating timer to update the display (every 500ms)
         this.displayTimerEvent = this.time.addEvent({
@@ -285,7 +298,7 @@ class ChallengeScene extends Phaser.Scene {
         
         const button = this.add.sprite(x, y, 'answer_button_' + answer)
             .setInteractive()
-            .setName('answer_' + answer)
+            .setName('answer_button_' + answer)
             .on('pointerover', function() {
                 this.setScale(1.1);
                 this.setTint(0xffff00);
@@ -298,17 +311,31 @@ class ChallengeScene extends Phaser.Scene {
                 this.answerQuestion(isCorrect, false); // Not timed out
             });
         
-        this.add.text(x, y, answer.toString(), {
+        const buttonText = this.add.text(x, y, answer.toString(), {
             font: 'bold 32px Arial',
             fill: '#ffffff',
             align: 'center',
-        }).setOrigin(0.5).setName('answer_' + answer);
+        }).setOrigin(0.5).setName('answer_text_' + answer);
+        
+        // Return references for easy access
+        return {
+            button: button,
+            text: buttonText,
+            x: x,
+            y: y,
+            answer: answer
+        };
     }
     
     answerQuestion(isCorrect, timedOut = false) {
-        // Disable inputs
+        // Disable inputs and stop all timers
         if (this.timerEvent) {
             this.timerEvent.remove();
+            this.timerEvent = null;
+        }
+        if (this.displayTimerEvent) {
+            this.displayTimerEvent.remove();
+            this.displayTimerEvent = null;
         }
         this.input.enabled = false;
         
@@ -332,13 +359,19 @@ class ChallengeScene extends Phaser.Scene {
             GameData.statistics.correctAnswers++;
         } else {
             feedbackMessage = timedOut 
-                ? `⏰ TIME'S UP!\nCorrect answer: ${this.currentQuestion.answer}`
-                : `❌ WRONG!\nCorrect answer: ${this.currentQuestion.answer}`;
+                ? `⏰ TIME'S UP!`
+                : `❌ WRONG!`;
             feedbackColor = 0xff0000;
             GameData.statistics.wrongAnswers++;
+            
+            // Highlight the correct answer button visually
+            this.highlightCorrectAnswer();
+            
+            // Display correct answer prominently
+            this.showCorrectAnswer();
         }
         
-        // Show feedback at the BOTTOM without blocking view
+        // Show feedback
         this.showFeedback(feedbackMessage, feedbackColor);
         
         // Check if this is the last question
@@ -360,27 +393,201 @@ class ChallengeScene extends Phaser.Scene {
         });
     }
     
+    highlightCorrectAnswer() {
+        const correctAnswer = this.currentQuestion.answer;
+        
+        // Use stored button references if available
+        if (this.answerButtons && this.answerButtons[correctAnswer]) {
+            const buttonData = this.answerButtons[correctAnswer];
+            const button = buttonData.button;
+            const text = buttonData.text;
+            
+            // Highlight the button with green tint
+            button.setTint(0x00ff00);
+            
+            // Add pulsing glow effect behind button
+            const glowCircle = this.add.circle(button.x, button.y, 100, 0x00ff00, 0.4);
+            glowCircle.setDepth(button.depth - 1);
+            glowCircle.setName('correct_answer_glow');
+            
+            // Animate glow pulse
+            this.tweens.add({
+                targets: glowCircle,
+                scaleX: 1.5,
+                scaleY: 1.5,
+                alpha: 0.2,
+                duration: 800,
+                yoyo: true,
+                repeat: -1,
+                ease: 'Sine.inOut'
+            });
+            
+            // Scale up the button
+            this.tweens.add({
+                targets: button,
+                scaleX: 1.3,
+                scaleY: 1.3,
+                duration: 400,
+                ease: 'Back.out'
+            });
+            
+            // Make text larger, brighter, and green
+            text.setStyle({
+                font: 'bold 48px Arial',
+                fill: '#00ff00',
+                stroke: '#ffffff',
+                strokeThickness: 4
+            });
+            
+            // Add checkmark next to correct answer
+            const checkmark = this.add.text(text.x - 85, text.y, '✅', {
+                font: 'bold 48px Arial',
+            }).setOrigin(0.5).setDepth(100).setName('correct_answer_checkmark');
+            
+            // Animate checkmark with bounce
+            checkmark.setScale(0);
+            this.tweens.add({
+                targets: checkmark,
+                scale: 1.2,
+                duration: 500,
+                ease: 'Back.out',
+                yoyo: true,
+                repeat: 1,
+                onComplete: () => {
+                    checkmark.setScale(1);
+                }
+            });
+            
+            return;
+        }
+        
+        // Fallback: search through children if references not available
+        this.children.list.forEach(child => {
+            if (!child) return;
+            
+            const constructorName = child.constructor.name;
+            
+            // Find button sprite for correct answer
+            if (child.name === 'answer_button_' + correctAnswer && constructorName === 'Sprite') {
+                child.setTint(0x00ff00);
+                
+                const glowCircle = this.add.circle(child.x, child.y, 100, 0x00ff00, 0.4);
+                glowCircle.setDepth(child.depth - 1);
+                glowCircle.setName('correct_answer_glow');
+                
+                this.tweens.add({
+                    targets: glowCircle,
+                    scaleX: 1.5,
+                    scaleY: 1.5,
+                    alpha: 0.2,
+                    duration: 800,
+                    yoyo: true,
+                    repeat: -1,
+                    ease: 'Sine.inOut'
+                });
+                
+                this.tweens.add({
+                    targets: child,
+                    scaleX: 1.3,
+                    scaleY: 1.3,
+                    duration: 400,
+                    ease: 'Back.out'
+                });
+            }
+            
+            // Find text for correct answer
+            if (child.name === 'answer_text_' + correctAnswer && constructorName === 'Text') {
+                child.setStyle({
+                    font: 'bold 48px Arial',
+                    fill: '#00ff00',
+                    stroke: '#ffffff',
+                    strokeThickness: 4
+                });
+                
+                const checkmark = this.add.text(child.x - 85, child.y, '✅', {
+                    font: 'bold 48px Arial',
+                }).setOrigin(0.5).setDepth(100).setName('correct_answer_checkmark');
+                
+                checkmark.setScale(0);
+                this.tweens.add({
+                    targets: checkmark,
+                    scale: 1.2,
+                    duration: 500,
+                    ease: 'Back.out',
+                    yoyo: true,
+                    repeat: 1,
+                    onComplete: () => {
+                        checkmark.setScale(1);
+                    }
+                });
+            }
+        });
+    }
+    
+    showCorrectAnswer() {
+        const correctAnswer = this.currentQuestion.answer;
+        
+        // Create a prominent display of the correct answer below the question
+        const answerBg = this.add.rectangle(400, 430, 400, 80, 0x000000, 0.85);
+        answerBg.setStrokeStyle(4, 0x00ff00);
+        answerBg.setDepth(50);
+        answerBg.setName('correct_answer_display');
+        
+        const answerText = this.add.text(400, 410, 'Correct Answer:', {
+            font: 'bold 24px Arial',
+            fill: '#ffffff',
+            align: 'center',
+        }).setOrigin(0.5).setDepth(51).setName('correct_answer_label');
+        
+        const answerValue = this.add.text(400, 450, correctAnswer.toString(), {
+            font: 'bold 56px Arial',
+            fill: '#00ff00',
+            align: 'center',
+            stroke: '#ffffff',
+            strokeThickness: 3,
+        }).setOrigin(0.5).setDepth(51).setName('correct_answer_value');
+        
+        // Pulse animation
+        this.tweens.add({
+            targets: answerBg,
+            scaleX: 1.05,
+            scaleY: 1.05,
+            duration: 400,
+            yoyo: true,
+            repeat: 3,
+            ease: 'Sine.inOut'
+        });
+    }
+    
     showFeedback(message, color) {
-        // Show feedback at the BOTTOM of the screen, doesn't block question
-        const feedback = this.add.text(400, 650, message, {
+        // Show feedback message below the correct answer display
+        const feedbackY = 540;
+        
+        // Create a feedback display
+        const feedbackBg = this.add.rectangle(400, feedbackY, 500, 70, 0x000000, 0.8);
+        feedbackBg.setStrokeStyle(3, color);
+        feedbackBg.setDepth(99);
+        feedbackBg.setName('feedback_bg');
+        
+        const feedback = this.add.text(400, feedbackY, message, {
             font: 'bold 32px Arial',
             fill: color,
             align: 'center',
-            backgroundColor: '#000000',
         }).setOrigin(0.5)
             .setPadding(15)
             .setDepth(100)
             .setName('feedback');
         
-        // Animation: Fade out smoothly
+        // Keep visible for 2 seconds, then fade
         this.tweens.add({
-            targets: feedback,
+            targets: [feedback, feedbackBg],
             alpha: 0,
-            duration: 1800,
-            delay: 200,
+            duration: 500,
+            delay: 2000,
             ease: 'Quad.in',
             onComplete: () => {
                 feedback.destroy();
+                feedbackBg.destroy();
             }
         });
     }
@@ -389,9 +596,14 @@ class ChallengeScene extends Phaser.Scene {
         // Disable input immediately
         this.input.enabled = false;
         
-        // Remove display timer
+        // Remove all timers
+        if (this.timerEvent) {
+            this.timerEvent.remove();
+            this.timerEvent = null;
+        }
         if (this.displayTimerEvent) {
             this.displayTimerEvent.remove();
+            this.displayTimerEvent = null;
         }
         
         const resultText = success ? 'VICTORY! ⚔️' : 'DEFEAT! ⚰️';

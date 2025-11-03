@@ -7,15 +7,17 @@ const DifficultyManager = {
     difficulties: {
         easy: {
             name: 'Easy',
-            range: [0, 5],
+            range: [2, 5],
+            range2: [2, 12],
             questionCount: 3,
             timePerQuestion: 8,
-            baseReward: 10,
+            baseReward: 1,
             description: '0x0 to 4x12, 10s per question'
         },
         medium: {
             name: 'Medium',
             range: [0, 12],
+            range2: [0, 12],
             questionCount: 2,
             timePerQuestion: 5,
             baseReward: 25,
@@ -24,6 +26,7 @@ const DifficultyManager = {
         hard: {
             name: 'Hard',
             range: [4, 12],
+            range2: [0, 12],
             questionCount: 3,
             timePerQuestion: 3,
             baseReward: 50,
@@ -44,9 +47,10 @@ const DifficultyManager = {
     generateQuestion(difficulty) {
         const settings = this.getDifficulty(difficulty);
         const [min, max] = settings.range;
+        const [min2, max2] = settings.range2;
         
         const a = Phaser.Math.Between(min, max);
-        const b = Phaser.Math.Between(min, max);
+        const b = Phaser.Math.Between(min2, max2);
         const answer = a * b;
         
         return {
